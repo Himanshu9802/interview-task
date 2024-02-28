@@ -12,7 +12,6 @@ export const getItemsList = createAsyncThunk("items/get", async (thunkApi) => {
     await axios
       .get("https://api.npoint.io/fa9c5548c98624de80af")
       .then((response) => {
-        console.log(response, "responses");
         return response.data;
       });
   } catch (err) {
