@@ -1,25 +1,30 @@
+import './Home.css'
+
 import React, { useEffect, useState } from "react";
 
-import { getItemsList } from "../../redux/items";
-import axios from "axios";
-import { Button, Input, Label, List } from "reactstrap";
+import { Button, Input, Label, List, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
+import { useDispatch, useSelector } from 'react-redux';
+
+import { addItem, getItemsList, markFavourite } from "../../redux/items";
 
 const Home = () => {
-  const [items, setItems] = useState([]);
+  const dispatch = useDispatch();
+
   const [newItem, setNewItem] = useState([]);
 
-  const getItems = () => {
-    axios.get(process.env.REACT_APP_API_URL).then((response) => {
-      return setItems(response.data);
-    });
-  };
+  const { itemsList: items, loading } = useSelector((s) => s.items);
+
+  const loadItems = () => {
+    dispatch(getItemsList())
+  }
 
   useEffect(() => {
-    getItems();
+    loadItems()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleItemAdd = () => {
+  const handleItemAdd = async() => {
     const checkItem = items?.filter(
       (singleItem) => singleItem?.item === newItem
     );
@@ -28,22 +33,45 @@ const Home = () => {
       return;
     }
 
-    axios
-      .post(process.env.REACT_APP_API_URL, [
+    dispatch(addItem([
         ...items,
         {
           item: newItem,
           isFavourite: 0,
         },
-      ])
-      .then((response) => {
-        return setItems(response.data);
-      })
-      .then(() => {
-        getItems();
-        toast.success("Item Added!");
-      });
+      ]));
+
+      await loadItems();
   };
+
+  const handleFavourite = async (itemName) => {
+    const updatedItems = [...items];
+
+   const index = updatedItems?.findIndex(item => item.item === itemName );
+
+    if (index > -1) {
+      const newItem = updatedItems[index];
+
+      if (newItem?.isFavourite){
+        updatedItems[index] = {
+            item: itemName,
+            isFavourite: 0,
+          }
+          toast.success("Item Removed From Favourites!");
+      }else{
+        updatedItems[index] = {
+            item: itemName,
+            isFavourite: 1,
+          }
+          toast.success("Item Added to Favourites!");
+      }
+    }
+
+    dispatch(markFavourite(updatedItems));
+
+    await loadItems();
+    
+  }
 
   return (
     <div className="mx-5 my-5">
@@ -53,14 +81,27 @@ const Home = () => {
           placeholder="enter item name"
           onChange={(v) => setNewItem(v.target.value)}
         />
-        <Button color="primary" onClick={() => handleItemAdd()}>
-          Add
+        <Button color="primary" onClick={() => handleItemAdd()} disabled={loading}>
+          {loading ? <Spinner size="sm">Loading...</Spinner> :
+          'Add'}
         </Button>
       </div>
       <hr />
-      <List>
+      <List type="unstyled">
         {items?.map((item) => {
-          return <li>{item.item}</li>;
+          return (
+            <li key={item.name}>
+              <Input
+                type="checkbox"
+                checked={item?.isFavourite}
+                className="mx-2"
+                onClick={() => {
+                  handleFavourite(item.item);
+                }}
+              />
+              {item.item}
+            </li>
+          );
         })}
       </List>
     </div>
